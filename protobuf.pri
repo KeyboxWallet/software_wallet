@@ -1,11 +1,11 @@
-NANOPB_RUNTIME_PATH = ../nanopb_runtime
+NANOPB_RUNTIME_PATH = nanopb
 
 INCLUDEPATH += $$NANOPB_RUNTIME_PATH
 SOURCES += $$NANOPB_RUNTIME_PATH/pb_common.c \
            $$NANOPB_RUNTIME_PATH/pb_encode.c \
            $$NANOPB_RUNTIME_PATH/pb_decode.c
 
-PROTODEF_PATH = ../protodef
+PROTODEF_PATH =  protodef
 INCLUDEPATH += $$PROTODEF_PATH
 INCLUDEPATH += $$PROTODEF_PATH/c
 

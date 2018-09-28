@@ -1,5 +1,5 @@
 
-CRYPTO_LIB_PATH = ../crypto_lib
+CRYPTO_LIB_PATH = crypto_lib
 AES_LIB_PATH = $$CRYPTO_LIB_PATH/aes
 
 INCLUDEPATH += $$CRYPTO_LIB_PATH

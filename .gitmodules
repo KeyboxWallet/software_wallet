@@ -1,0 +1,9 @@
+[submodule "crypto_lib"]
+	path = crypto_lib
+	url = https://github.com/KeyboxWallet/crypto_lib.git
+[submodule "protodef"]
+	path = protodef
+	url = https://github.com/KeyboxWallet/protodef.git
+[submodule "nanopb"]
+	path = nanopb
+	url = https://github.com/nanopb/nanopb.git
