@@ -27,21 +27,21 @@
      <item>
       <widget class="QPushButton" name="saveOrLoadButton">
        <property name="text">
-        <string>从文件加载</string>
+        <string>Load From File</string>
        </property>
       </widget>
      </item>
      <item>
       <widget class="QPushButton" name="generalButton">
        <property name="text">
-        <string>新钱包</string>
+        <string>New Wallet</string>
        </property>
       </widget>
      </item>
      <item>
       <widget class="QPushButton" name="mnemonicRecoveryButton">
        <property name="text">
-        <string>从助记词恢复</string>
+        <string>Recover Wallet from Mnemonic</string>
        </property>
       </widget>
      </item>

@@ -15,7 +15,7 @@ WalletMain::WalletMain(QWidget *parent) :
     mManager(parent)
 {
     ui->setupUi(this);
-    ui->status->setText("无钱包");
+    ui->status->setText(tr("NO WALLET"));
     connect(&mManager, SIGNAL(walletChanged()), this, SLOT(walletChange()));
     connect(ui->generalButton, SIGNAL(clicked()), this, SLOT(generalbuttonClicked()));
     connect(ui->saveOrLoadButton, &QPushButton::clicked, this, &WalletMain::saveloadButtonClicked);
@@ -32,14 +32,14 @@ void WalletMain::walletChange()
     WalletInstance *inst = mManager.getWalletInstance();
     if( inst != NULL) {
         auto statusText = inst->getName();
-        ui->saveOrLoadButton->setText("保存到文件");
+        ui->saveOrLoadButton->setText(tr("Save to file"));
         if( inst->isLocked() ){
-            statusText.append(",已经锁定");
-            ui->generalButton->setText("解锁");
+            statusText.append(tr(",locked"));
+            ui->generalButton->setText(tr("unlock"));
         }
         else {
-            statusText.append(",已经解锁");
-            ui->generalButton->setText("锁定");
+            statusText.append(tr(",unlocked"));
+            ui->generalButton->setText(tr("lock"));
         }
         ui->status->setText(statusText);
         ui->mnemonicRecoveryButton->hide();
@@ -55,8 +55,8 @@ void WalletMain::generalbuttonClicked()
     }
     if( inst->isLocked()){
         bool ok;
-        QString text = QInputDialog::getText(this, tr("请输入密码"),
-                                                 tr("输入密码以解锁钱包"), QLineEdit::Password,
+        QString text = QInputDialog::getText(this, tr("Please input password"),
+                                                 tr("input password to lock wallet"), QLineEdit::Password,
                                                  "", &ok);
         if( !ok){
             return;
@@ -65,7 +65,7 @@ void WalletMain::generalbuttonClicked()
             walletChange();
         }
         else{
-            ui->status->setText("密码错误，解锁失败");
+            ui->status->setText(tr("Password error, unlock failed."));
         }
     }
     else{
@@ -81,13 +81,13 @@ void WalletMain::saveloadButtonClicked()
     WalletInstance *inst = mManager.getWalletInstance();
     QString filename;
     if( inst ){ // save
-        filename = QFileDialog::getSaveFileName(this, "选择文件");
+        filename = QFileDialog::getSaveFileName(this, tr("select file"));
         if( ! filename.isNull()) {
             inst->saveToFile(filename);
         }
     }
     else {
-        filename = QFileDialog::getOpenFileName(this, "选择文件");
+        filename = QFileDialog::getOpenFileName(this, tr("select file"));
         qDebug() << filename;
         mManager.loadWallet(filename);
         //inst = WalletInstance::loadFromFile(filename);
@@ -103,8 +103,8 @@ void WalletMain::createWallet()
     // UI
     // step 1: save mnemonic
     QMessageBox mbox;
-    mbox.setText("第一步：请记录助记词");
-    QString information = "助记词是终极秘密，请用纸笔记录，保存到安全位置。\n\n";
+    mbox.setText(tr("Step 1,") + tr("please save your mnemonic words"));
+    QString information = tr("mnemonic words are ultimate secret, please write down and keep it safe.")+ "\n\n";
     mbox.setInformativeText(information);
     mbox.setDetailedText(mnemonic);
 
@@ -119,12 +119,12 @@ void WalletMain::createWallet()
     QInputDialog dlg;
     // mbox.exec();
     bool ok;
-    QString text = QInputDialog::getMultiLineText(this, "第二步，确保您记住了助记词",
-                                             "请输入助记词,可任意分行",
+    QString text = QInputDialog::getMultiLineText(this, tr("Step 2,") + tr("make sure you remembered mnemonic words"),
+                                             tr("Please input mnemonic words here, can split by new line between any words"),
                                              "", &ok);
     if (ok) {
         if( text.split(QRegExp("\\s+"), QString::SkipEmptyParts).join(" ") != mnemonic) {
-            ui->status->setText("助记词输入错误");
+            ui->status->setText(tr("invalid mnemonic words"));
             return;
         }
     }
@@ -133,8 +133,8 @@ void WalletMain::createWallet()
     }
 
     // step 3, name
-    password = QInputDialog::getText(this, "第三步，请设定密码",
-                                         "请输入密码用于解锁钱包，请使用高强度密码",
+    password = QInputDialog::getText(this, tr("Step 3,") + tr("please set password"),
+                                         tr("password is used to unlock the wallet, make sure to use a strong one"),
                                          QLineEdit::Password,
                                          "", &ok);
     if( !ok ) {
@@ -142,7 +142,7 @@ void WalletMain::createWallet()
     }
 
 
-    mManager.createWallet(mnemonic, password, "新钱包");
+    mManager.createWallet(mnemonic, password, tr("new wallet"));
 }
 
 
@@ -153,8 +153,8 @@ void WalletMain::recoverFromMnemonic()
     QInputDialog dlg;
     // mbox.exec();
     bool ok;
-    QString text = QInputDialog::getMultiLineText(this, "第一步，确保您记住了助记词",
-                                             "请输入助记词,可任意分行",
+    QString text = QInputDialog::getMultiLineText(this, tr("Step 1,") + tr("make sure you remembered mnemonic words"),
+                                             tr("Please input mnemonic words here, can split by new line between any words"),
                                              "", &ok);
     if (ok) {
         mnemonic = text.split(QRegExp("\\s+"), QString::SkipEmptyParts).join(" ") ;
@@ -163,7 +163,8 @@ void WalletMain::recoverFromMnemonic()
         //    return;
         // }
         if( !mnemonic_check(mnemonic.toUtf8().constData())) {
-            ui->status->setText("非法助记词");
+           // ui->status->setText("非法助记词");
+            ui->status->setText(tr("invalid mnemonic words"));
             return;
         }
     }
@@ -172,8 +173,8 @@ void WalletMain::recoverFromMnemonic()
     }
 
     // step 3, name
-    QString password = QInputDialog::getText(this, "第二步，请设定密码",
-                                         "请输入密码用于解锁钱包，请使用高强度密码",
+    QString password = QInputDialog::getText(this, tr("Step 2,") + tr("please set password"),
+                                         tr("password is used to unlock the wallet, make sure to use a strong one"),
                                          QLineEdit::Password,
                                          "", &ok);
     if( !ok ) {
@@ -181,5 +182,5 @@ void WalletMain::recoverFromMnemonic()
     }
 
 
-    mManager.createWallet(mnemonic, password, "新钱包");
+    mManager.createWallet(mnemonic, password, tr("Recover wallet"));
 }
