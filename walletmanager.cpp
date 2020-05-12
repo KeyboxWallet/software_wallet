@@ -65,6 +65,7 @@ if( mWallet->isLocked() ) {          \
     bool decode_status;
     EccSignRequest signReq = EccSignRequest_init_default;
     EccGetPublicKeyRequest getPubKeyReq = EccGetPublicKeyRequest_init_default;
+    EccGetExtendedPublicKeyRequest getXpubReq = EccGetExtendedPublicKeyRequest_init_default;
     EccMultiplyRequest multiplyReq = EccMultiplyRequest_init_default;
 
     QByteArray rb;
@@ -115,6 +116,48 @@ if( mWallet->isLocked() ) {          \
             mServer->abortConnection();
         }
         break;
+    case MsgTypeEccGetExtendedPubkeyRequest:
+        CHECK_MWALLET
+        decode_status = pb_decode(&stream, EccGetExtendedPublicKeyRequest_fields, &getXpubReq);
+        if( decode_status ){
+            if( getXpubReq.algorithm != EccAlgorithm_SECP256K1){
+                replyError(KEYBOX_ERROR_NOT_SUPPORTED, "unsupported algorithm");
+                break;
+            }
+            QByteArray array;
+            QByteArray chainCode;
+            int32_t errcode;
+            QString errMessage;
+            mWallet ->getExtendedPubKey(QString::fromUtf8(getXpubReq.hdPath), errcode, errMessage, array, chainCode);
+            if( errcode != 0 ){
+                replyError(errcode, errMessage);
+                break;
+            }
+            EccGetExtendedPublicKeyReply reply;
+            reply.algorithm = EccAlgorithm_SECP256K1;
+            qstrncpy(reply.hdPath, getPubKeyReq.hdPath, sizeof(reply.hdPath));
+            reply.pubkey.size = array.size();
+            memcpy(reply.pubkey.bytes, array.constData(), array.size());
+            reply.chainCode.size = chainCode.size();
+            memcpy(reply.chainCode.bytes, chainCode.constData(), chainCode.size());
+
+            pb_ostream_t ostream = pb_ostream_from_buffer((uint8_t*)rb.data(), rb.size());
+            encode_status = pb_encode(&ostream, EccGetExtendedPublicKeyReply_fields, &reply);
+            size = ostream.bytes_written;
+
+            if( encode_status ){
+                rb.resize(size);
+                mServer -> sendMessage(MsgTypeEccGetExtendedPubkeyReply, rb);
+            }
+            else {
+                qFatal("can't encode message, %s", PB_GET_ERROR(&ostream));
+            }
+        }
+        else{
+            qDebug("%s %d", getPubKeyReq.hdPath , getPubKeyReq.algorithm );
+            // m_conn->abort();
+            mServer->abortConnection();
+        }
     case MsgTypeEccSignRequest:
         CHECK_MWALLET
         decode_status = pb_decode(&stream, EccSignRequest_fields, &signReq);
@@ -248,6 +291,7 @@ if( mWallet->isLocked() ) {          \
         }
         break;
     default:
+        replyError(KEYBOX_ERROR_NOT_SUPPORTED, "unsupported Method");
         break;
     }
 }
@@ -257,7 +301,9 @@ void WalletManager::replyError(int32_t code, const QString &message)
     RequestRejected rej = RequestRejected_init_default;
     rej.errCode = code;
     rej.requestId = this->reqId;
-    qstrncpy(rej.errMessage, message.toUtf8().constData(), sizeof(rej.errMessage));
+    QString m = "[wallet]";
+    m.append(message);
+    qstrncpy(rej.errMessage, m.toUtf8().constData(), sizeof(rej.errMessage));
     QByteArray r;
     bool encode_status;
     size_t size;

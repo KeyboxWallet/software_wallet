@@ -130,7 +130,53 @@ void WalletInstance::getPublicKey(const QString &path, int32_t& errcode, QString
         errcode = KEYBOX_ERROR_SERVER_ISSUE;
         errMessage = "internal error";
     }
- }
+}
+
+void WalletInstance::getExtendedPubKey(QString const &path, int32_t& errcode, QString &errMessage, QByteArray &pubkey, QByteArray &chainCode)
+{
+    errMessage = "";
+    errcode = 0;
+    if( this->isLocked()){
+        errcode = KEYBOX_ERROR_WALLET_LOCKED;
+        errMessage = "wallet locked";
+        return ;
+    }
+    if(!path.startsWith("bip32/")){
+        errcode = KEYBOX_ERROR_NOT_SUPPORTED;
+        errMessage = "path not supported, only support bip32/ now";
+        return;
+    }
+    QString bip32path = path.right(path.length() - 6);
+
+    if( !isValidBip32Path(bip32path.toUtf8())){
+        errcode = KEYBOX_ERROR_INVALID_PARAMETER;
+        errMessage = "invalid BIP32 path";
+        return;
+    }
+    HDNode node;
+    // QString privateKeyForDebug;
+    if( getBip39NodeFromPath(m_seed_plain.data(), bip32path.toUtf8(), &node)){
+        uint8_t pubkey_uncompressed[65];
+        if ( ecdsa_uncompress_pubkey(node.curve->params, node.public_key, pubkey_uncompressed) ){
+          pubkey.resize(64);
+          memcpy(pubkey.data(), pubkey_uncompressed + 1, 64 );
+          chainCode.resize(32);
+          memcpy(chainCode.data(), node.chain_code, 32);
+        }
+        else {
+            errcode = KEYBOX_ERROR_SERVER_ISSUE;
+            errMessage = "internal error";
+        }
+        // privateKeyForDebug = QString::fromUtf8( QByteArray((char*)node.private_key, 32).toHex() );
+        // qDebug("private key: %s", QByteArray((char*)node.private_key, 32).toHex().constData());
+        // memcpy(pubkey.data(), node.public_key + 1, 32);
+    }
+    else {
+        errcode = KEYBOX_ERROR_SERVER_ISSUE;
+        errMessage = "internal error";
+    }
+}
+
 
 void WalletInstance::eccSign(const QString &path, const QByteArray &hash_digest, const EccSignOptions &options, int32_t&errcode, QString &errMessage, EccSignature &sig,  QByteArray & pubkey) {
     errMessage = "";
