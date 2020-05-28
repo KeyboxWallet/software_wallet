@@ -13,7 +13,7 @@ extern "C" {
 void getSecretAndIv(QString const &password, uint8_t secret[64]){
     const char *pass = password.toUtf8().constData();
     PBKDF2_HMAC_SHA512_CTX pctx;
-    pbkdf2_hmac_sha512_Init(&pctx, (const uint8_t*)pass, strlen(pass), (const uint8_t *)"KeyBox", 6);
+    pbkdf2_hmac_sha512_Init(&pctx, (const uint8_t*)pass, strlen(pass), (const uint8_t *)"KeyBox", 6, 0);
     pbkdf2_hmac_sha512_Update(&pctx, 2048 );
     pbkdf2_hmac_sha512_Final(&pctx, secret);
 
@@ -112,7 +112,7 @@ void WalletInstance::getPublicKey(const QString &path, int32_t& errcode, QString
     }
     HDNode node;
     // QString privateKeyForDebug;
-    if( getBip39NodeFromPath(m_seed_plain.data(), bip32path.toUtf8(), &node)){
+    if( getBip32NodeFromPath(m_seed_plain.data(), bip32path.toUtf8(), &node)){
         uint8_t pubkey_uncompressed[65];
         if ( ecdsa_uncompress_pubkey(node.curve->params, node.public_key, pubkey_uncompressed) ){
           pubkey.resize(64);
@@ -155,7 +155,7 @@ void WalletInstance::getExtendedPubKey(QString const &path, int32_t& errcode, QS
     }
     HDNode node;
     // QString privateKeyForDebug;
-    if( getBip39NodeFromPath(m_seed_plain.data(), bip32path.toUtf8(), &node)){
+    if( getBip32NodeFromPath(m_seed_plain.data(), bip32path.toUtf8(), &node)){
         uint8_t pubkey_uncompressed[65];
         if ( ecdsa_uncompress_pubkey(node.curve->params, node.public_key, pubkey_uncompressed) ){
           pubkey.resize(64);
@@ -175,6 +175,15 @@ void WalletInstance::getExtendedPubKey(QString const &path, int32_t& errcode, QS
         errcode = KEYBOX_ERROR_SERVER_ISSUE;
         errMessage = "internal error";
     }
+}
+
+void WalletInstance::getBip32MasterKeyId(QByteArray &id)
+{
+    HDNode node;
+    getBip32NodeFromPath(m_seed_plain.constData(), "m/", &node);
+    id.resize(32);
+    bip32getIdentifier(&node, (uint8_t*)id.data());
+    id.resize(20);
 }
 
 
@@ -212,7 +221,7 @@ void WalletInstance::eccSign(const QString &path, const QByteArray &hash_digest,
     }
 
     HDNode node;
-    if( getBip39NodeFromPath(m_seed_plain.data(), bip32path.toUtf8(), &node)){
+    if( getBip32NodeFromPath(m_seed_plain.data(), bip32path.toUtf8(), &node)){
         // pubkey.resize(32);
         // memcpy(pubkey.data(), node.public_key + 1, 32);
         uint8_t usig[64];
@@ -272,7 +281,7 @@ void WalletInstance::ecdhMultiply(QString const & path, const QByteArray &pubkey
     }
 
     HDNode node;
-    if( getBip39NodeFromPath(m_seed_plain.data(), bip32path.toUtf8(), &node)){
+    if( getBip32NodeFromPath(m_seed_plain.data(), bip32path.toUtf8(), &node)){
         // pubkey.resize(32);
         // memcpy(pubkey.data(), node.public_key + 1, 32);
         uint8_t pubkey_array[65];

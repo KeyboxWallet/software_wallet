@@ -32,6 +32,7 @@ public:
     bool isLocked();
     void getPublicKey(QString const & path, int32_t& errcode, QString &errMessage, QByteArray &pubkey);
     void getExtendedPubKey(QString const &path, int32_t& errcode, QString &errMessage, QByteArray &pubkey, QByteArray &chainCode);
+    void getBip32MasterKeyId(QByteArray &id);
     void eccSign(QString const & path,
                  const QByteArray &hash_digest,
                  const EccSignOptions &options,

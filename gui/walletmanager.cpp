@@ -17,6 +17,7 @@ WalletManager::WalletManager(QObject *parent) : QObject(parent)
     connect(mServer, &LocalTcpServer::clientDisconnected, this, &WalletManager::clientDisconnected);
     connect(mServer, &LocalTcpServer::messageReceived, this, &WalletManager::messageReceived);
     mHasClient = false;
+    reqId = 0;
 }
 
 void WalletManager::createWallet(const QString &mnemonic, const QString &password, const QString &name)
@@ -64,6 +65,7 @@ if( mWallet->isLocked() ) {          \
     pb_istream_t stream = pb_istream_from_buffer((uint8_t*)buffer.constData(), buffer.size());
     bool decode_status;
     EccSignRequest signReq = EccSignRequest_init_default;
+    BitcoinSignRequest bitcoinSignReq = BitcoinSignRequest_init_default;
     EccGetPublicKeyRequest getPubKeyReq = EccGetPublicKeyRequest_init_default;
     EccGetExtendedPublicKeyRequest getXpubReq = EccGetExtendedPublicKeyRequest_init_default;
     EccMultiplyRequest multiplyReq = EccMultiplyRequest_init_default;
@@ -75,6 +77,29 @@ if( mWallet->isLocked() ) {          \
     rb.resize(1024*8);
 
     switch( type ){
+    case MsgTypeGetWalletIdentifierRequest:
+        CHECK_MWALLET
+        {
+            QByteArray id;
+            mWallet->getBip32MasterKeyId(id);
+            GetWalletIdentifierReply reply;
+            reply.bip32MasterKeyId.size = id.size();
+            memcpy(reply.bip32MasterKeyId.bytes, id.constData(), id.size());
+            pb_ostream_t ostream = pb_ostream_from_buffer((uint8_t*)rb.data(), rb.size());
+            encode_status = pb_encode(&ostream, GetWalletIdentifierReply_fields, &reply);
+            size = ostream.bytes_written;
+
+            if( encode_status ){
+                rb.resize(size);
+                mServer -> sendMessage(MsgTypeGetWalletIdentifierReply, rb);
+            }
+            else {
+                qFatal("can't encode message, %s", PB_GET_ERROR(&ostream));
+            }
+
+         }
+
+        break;
     case MsgTypeEccGetPublicKeyRequest:
         CHECK_MWALLET
         decode_status = pb_decode(&stream, EccGetPublicKeyRequest_fields, &getPubKeyReq);
@@ -154,10 +179,11 @@ if( mWallet->isLocked() ) {          \
             }
         }
         else{
-            qDebug("%s %d", getPubKeyReq.hdPath , getPubKeyReq.algorithm );
+            qDebug("%s %d", getXpubReq.hdPath , getXpubReq.algorithm );
             // m_conn->abort();
             mServer->abortConnection();
         }
+        break;
     case MsgTypeEccSignRequest:
         CHECK_MWALLET
         decode_status = pb_decode(&stream, EccSignRequest_fields, &signReq);
@@ -226,8 +252,19 @@ if( mWallet->isLocked() ) {          \
 
         }
         else {
-            qDebug("%s %d", getPubKeyReq.hdPath , getPubKeyReq.algorithm );
+            qDebug("%s %d", signReq.hdPath , signReq.algorithm );
             // m_conn->abort();
+            mServer->abortConnection();
+        }
+        break;
+    case MsgTypeBitcoinSignRequest:
+        CHECK_MWALLET
+        decode_status = pb_decode(&stream, BitcoinSignRequest_fields, &bitcoinSignReq);
+        if( decode_status ){
+            // check path first
+        }
+        else{
+           //  qDebug("%s", bitcoinSignReq.hdPath );
             mServer->abortConnection();
         }
         break;

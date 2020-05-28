@@ -1,6 +1,7 @@
 #include "crypto_utils.h"
 #include "curves.h"
 #include <string.h>
+#define UNUSED(x) (void)(x)
 
 static bool isValidPart(const char *part){
     if( !part) {
@@ -24,8 +25,14 @@ static bool isValidPart(const char *part){
     if (*p == '\'' && *(p+1) == 0) {
         return true;
     }
+    uint32_t value = c - '0';
+    uint32_t nValue;
     while (p[1] != 0){
         c = p[0];
+        nValue = value * 10 + (c-'0');
+        if( nValue < value || nValue >= 0x80000000U ){ //too large.
+            return false;
+        }
         if( !(c >= '0' && c <= '9')){
             return false;
         }
@@ -56,7 +63,22 @@ bool isValidBip32Path(const char *path)
     return true;
 }
 
-bool getBip39NodeFromPath(const char seed[64], const char *path, HDNode * node)
+
+uint16_t getPathDeriveCount(const char *path)
+{
+    uint16_t count = 0;
+    char c;
+    while( (c = *path++) != 0){
+        if( c == '/' ){
+            count ++;
+        }
+    }
+    return count;
+}
+
+
+
+bool getBip32NodeFromPath(const char seed[64], const char *path, HDNode * node)
 {
     if( !path ) {
         return false;
@@ -110,8 +132,16 @@ bool getBip39NodeFromPath(const char seed[64], const char *path, HDNode * node)
 
 int isSigGrapheneCanonical(uint8_t by, uint8_t sig[64])
 {
+    UNUSED(by);
     return !(sig[0] & 0x80)
                    && !(sig[0] == 0 && !(sig[1] & 0x80))
                    && !(sig[32] & 0x80)
                    && !(sig[32] == 0 && !(sig[33] & 0x80));
 }
+
+void bip32getIdentifier(HDNode *node, uint8_t id[32])
+{
+    hdnode_fill_public_key(node);
+    hasher_Raw(node->curve->hasher_pubkey, node->public_key, 33, id);
+}
+
