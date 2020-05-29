@@ -28,8 +28,9 @@ QMAKE_CFLAGS += -std=gnu99 \
             -Winit-self \
             -Wuninitialized \
             -Wformat-security \
-            -Wno-missing-braces \
             -Werror
+
+macx: QMAKE_CFLAGS -= -Werror
 
 QMAKE_CFLAGS += -DUSE_ETHEREUM=1
 QMAKE_CFLAGS += -DUSE_GRAPHENE=1
