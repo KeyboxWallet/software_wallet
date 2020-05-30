@@ -5,7 +5,7 @@
 #-------------------------------------------------
 
 
-TEMPLATE = SUBDIRS
+TEMPLATE = subdirs
 
 
 SUBDIRS = crypto_lib_qmakes gui
