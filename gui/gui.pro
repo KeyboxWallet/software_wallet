@@ -28,6 +28,7 @@ DEFINES += QT_DEPRECATED_WARNINGS
 include(./protobuf.pri)
 
 CRYPTO_LIB_PATH = ../crypto_lib
+PSBT_PATH = ../libpsbt_for_signer
 include(../common/common.pri)
 
 
@@ -45,6 +46,7 @@ HEADERS += \
     localtcpserver.h
 
 
+LIBS += ../libpsbt_qmakes/libpsbt.a
 LIBS += ../crypto_lib_qmakes/main/libcrypto_lib.a
 LIBS += ../crypto_lib_qmakes/ed25519/libed25519.a
 

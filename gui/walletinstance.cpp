@@ -5,7 +5,8 @@ extern "C" {
     #include "bip39.h"
     #include "pbkdf2.h"
     #include "memzero.h"
-    // #include "bip32.h"
+    #include "bip32.h"
+    #include "curves.h"
 }
 
 #include "crypto_utils.h"
@@ -350,4 +351,19 @@ WalletInstance * WalletInstance::loadFromFile(const QString & path)
 
     }
     return NULL;
+}
+
+bool WalletInstance::getBip32NodeFromUint32Array(HDNode *node, const uint32_t *path, size_t count)
+{
+    int r;
+    r = hdnode_from_seed((uint8_t*)m_seed_plain.data(), 64, SECP256K1_NAME, node);
+    if( !r) {
+        return false;
+    }
+    uint32_t fingerPrint = hdnode_fingerprint(node);
+    if( fingerPrint != path[0] ){
+        return false;
+    }
+
+    return bip32PathDerive(path+1, count-1, node);
 }

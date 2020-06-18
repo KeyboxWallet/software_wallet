@@ -129,6 +129,33 @@ bool getBip32NodeFromPath(const char seed[64], const char *path, HDNode * node)
     return true;
 }
 
+bool bip32PathDerive( const uint32_t *path, size_t pathCount, HDNode * node)
+{
+    int r;
+    if( !path ) {
+        return false;
+    }
+    if (!node) {
+        return false;
+    }
+    uint32_t index;
+    for(size_t i=0; i<pathCount; i++) {
+        index = path[i];
+        if( index & 0x80000000 ){
+            r = hdnode_private_ckd_prime(node, index & ~0x80000000);
+        }
+        else{
+            r = hdnode_private_ckd(node, index);
+        }
+
+        if(!r){
+            return false;
+        }
+    }
+    hdnode_fill_public_key(node);
+    return true;
+}
+
 
 int isSigGrapheneCanonical(uint8_t by, uint8_t sig[64])
 {

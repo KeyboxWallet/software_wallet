@@ -5,6 +5,10 @@
 #include <QByteArray>
 
 #include "messages.pb.h"
+extern "C"
+{
+    #include "bip32.h"
+};
 
 struct EccSignature {
     QByteArray R;
@@ -48,6 +52,7 @@ public:
                       QByteArray &outPubkey );
     bool saveToFile(const QString &path);
     static WalletInstance* loadFromFile(const QString &path);
+    bool getBip32NodeFromUint32Array(HDNode *node, const uint32_t * path, size_t count);
 
 private:
     QByteArray m_seed_encrypted;

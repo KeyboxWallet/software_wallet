@@ -8,5 +8,5 @@
 TEMPLATE = subdirs
 
 
-SUBDIRS = crypto_lib_qmakes gui
-gui.depends = crypto_lib_qmakes
+SUBDIRS = crypto_lib_qmakes libpsbt_qmakes gui
+gui.depends = crypto_lib_qmakes libpsbt_qmakes

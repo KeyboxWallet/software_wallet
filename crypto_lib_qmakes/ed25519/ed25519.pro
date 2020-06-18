@@ -7,7 +7,7 @@ include(../../common/common.pri)
 
 ED25519_SRCS = $$files($$CRYPTO_LIB_PATH/ed25519-donna/*.c)
 
-message($$ED25519_SRCS)
+# message($$ED25519_SRCS)
 
 CRYPTO_SRCS += $$ED25519_SRCS
 

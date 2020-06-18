@@ -11,6 +11,7 @@ extern "C" {
 
 bool isValidBip32Path(const char *path);
 bool getBip32NodeFromPath(const char seed[64], const char *path, HDNode * node);
+bool bip32PathDerive(const uint32_t *path, size_t pathCount, HDNode * node);
 int isSigGrapheneCanonical(uint8_t by, uint8_t sig[64]);
 uint16_t getPathDeriveCount(const char *path);
 void bip32getIdentifier(HDNode *node, uint8_t id[32]);

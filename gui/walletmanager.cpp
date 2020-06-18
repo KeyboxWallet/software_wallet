@@ -7,7 +7,8 @@ extern "C" {
     #include "pb_decode.h"
     #include "messages.pb.h"
 }
-
+#include "btc/tx.h"
+#include "btc/psbt.h"
 
 WalletManager::WalletManager(QObject *parent) : QObject(parent)
 {
@@ -51,6 +52,20 @@ void WalletManager::clientDisconnected()
     mHasClient = false;
 }
 
+QString btc_value_pretty(uint64_t value)
+{
+    QString ret;
+    if( value < 1000000 ){
+        ret = QString::fromUtf8("%1mBTC").arg(value/100000.0);
+    }
+    else{
+        ret = QString::fromUtf8("%1BTC").arg(value / 100000000.0);
+    }
+    return ret;
+}
+
+
+
 void WalletManager::messageReceived(uint32_t type, const QByteArray &buffer)
 {
 #define CHECK_MWALLET   \
@@ -74,7 +89,7 @@ if( mWallet->isLocked() ) {          \
     bool encode_status;
     size_t size;
 
-    rb.resize(1024*8);
+    rb.resize(1024*10);
 
     switch( type ){
     case MsgTypeGetWalletIdentifierRequest:
@@ -262,6 +277,132 @@ if( mWallet->isLocked() ) {          \
         decode_status = pb_decode(&stream, BitcoinSignRequest_fields, &bitcoinSignReq);
         if( decode_status ){
             // check path first
+            psbt p;
+            struct const_buffer b;
+            b.p = bitcoinSignReq.psbt.bytes ;
+            b.len = bitcoinSignReq.psbt.size;
+            psbt_init(&p);
+            btc_tx *tx = nullptr;
+            QString outinfo;
+            outinfo.append("付款信息:\n");
+            char address[98];
+            size_t i,j,k;
+            int ret;
+            bool someSigned = false;
+            psbt_map_elem * elem;
+            uint32_t * bip32_path;
+            uint256 hash;
+            size_t path_size;
+            HDNode signNode;
+            QMessageBox msgBox;
+            uint32_t hashType = SIGHASH_ALL;
+            vector * ivec;
+            char * errMsg;
+            uint8_t sig[65];
+            cstring * outStr;
+            BitcoinSignResult result;
+            pb_ostream_t ostream ;
+
+            if( !psbt_deserialize(&p, &b) ){
+               replyError(  KEYBOX_ERROR_INVALID_PARAMETER, "you must provide valid psbt buffer.");
+               goto _psbt_err_ret;
+            }
+            // output message, let user decide.
+            tx = psbt_get_unsigned_tx(&p);
+            Q_ASSERT(tx);
+            for(i=0; i<tx->vout->len; i++){
+                // todo: check change, and if it is, omit info
+                btc_tx_out * tx_out = (btc_tx_out*)vector_idx(tx->vout, i);
+                btc_tx_get_output_address(address, 
+                    tx_out,
+                    bitcoinSignReq.testnet ? & btc_chainparams_test : & btc_chainparams_main );
+                    outinfo.append(address);
+                    outinfo.append(" ");
+                    outinfo.append(btc_value_pretty(tx_out->value));
+                    outinfo.append("\n");   
+            }
+            msgBox.setText("Bitcoin 确认签名:");
+            msgBox.setInformativeText(outinfo);
+            msgBox.setStandardButtons(QMessageBox::Ok  | QMessageBox::Cancel);
+            msgBox.setDefaultButton(QMessageBox::Ok);
+            ret = msgBox.exec();
+            if(ret == QMessageBox::Cancel ){
+                replyError(KEYBOX_ERROR_USER_CANCELLED, "用户拒绝签名");
+                goto _psbt_err_ret;
+            }
+                
+            // match which input can be signed, and sign it.
+            for( i=0; i<tx->vin->len; i++){
+                ivec = (vector*)vector_idx(p.input_data, i);
+                for(j=0; j<ivec->len; j++){
+                    elem = (psbt_map_elem*) vector_idx(ivec, j);
+                    if( elem->type.input == PSBT_IN_BIP32_DERIVATION ){
+
+                       //bip32_path = (const uint32_t*)elem->value.p;
+                        if( (elem->value.len & 3) != 0 || elem->value.len < 8){
+                            replyError(KEYBOX_ERROR_CLIENT_ISSUE, "非法的bip32路径");
+                            goto _psbt_err_ret;
+                        }
+                        path_size = elem->value.len / 4;
+                        bip32_path = (uint32_t*)malloc( elem->value.len);
+                        memcpy(bip32_path, elem->value.p, elem->value.len);
+                        bip32_path[0] = be32toh(bip32_path[0]);
+                        for( k=1; k<path_size; k++){
+                            //memcpy(bip32_path[k
+                            bip32_path[i] = le32toh(bip32_path[i]);
+                        }
+                        if( !mWallet->getBip32NodeFromUint32Array(&signNode, bip32_path, path_size )){
+                            free(bip32_path);
+                            continue;
+                        }
+                        if( memcmp(signNode.public_key, (uint8_t*)elem->key.p + 1, 33) != 0 ){
+                            free(bip32_path);
+                            continue;
+                        }
+                        // sign it.
+                        if( !psbt_check_for_sig(&p, i, &hashType, &errMsg)
+                           || !psbt_get_sighash(&p, i, hashType, hash, &errMsg) ){
+                            free(bip32_path);
+                            replyError(KEYBOX_ERROR_CLIENT_ISSUE, "psbt can't be signed.");
+                            goto _psbt_err_ret;
+                        }
+                        if( hdnode_sign_digest(&signNode, hash, sig, sig+64, nullptr)==0 ){
+                            psbt_add_partial_sig(&p, i, signNode.public_key, sig);
+                            someSigned = true;
+                        }
+                    }
+
+                }
+
+            }
+            // serialize and back the psbt.
+            if( someSigned ){
+                outStr = cstr_new_sz(2048);
+                if( psbt_serialize(outStr, &p) && outStr->len < 8192 ){
+                    result.psbt.size = outStr->len;
+                    memcpy(result.psbt.bytes, outStr->str, outStr->len);
+                    ostream = pb_ostream_from_buffer((uint8_t*)rb.data(), rb.size());
+                    encode_status = pb_encode(&ostream, BitcoinSignResult_fields, &result);
+                    size = ostream.bytes_written;
+
+                    if( encode_status ){
+                        rb.resize(size);
+                        mServer -> sendMessage(MsgTypeBitcoinSignResult, rb);
+                    }
+                    else {
+                        qFatal("can't encode message, %s", PB_GET_ERROR(&ostream));
+                    }
+                }
+                else{
+                    replyError(KEYBOX_ERROR_SERVER_ISSUE, "can not serialze output psbt");
+                }
+                cstr_free(outStr, true);
+            }
+            else{
+                replyError(KEYBOX_ERROR_CLIENT_ISSUE, "none of inputs can be signed");
+            }
+_psbt_err_ret:
+            psbt_reset(&p); // free psbt memory
         }
         else{
            //  qDebug("%s", bitcoinSignReq.hdPath );

@@ -7,3 +7,6 @@
 [submodule "nanopb"]
 	path = nanopb
 	url = https://github.com/nanopb/nanopb.git
+[submodule "libpsbt_for_signer"]
+	path = libpsbt_for_signer
+	url = https://github.com/KeyboxWallet/libpsbt_for_signer.git
