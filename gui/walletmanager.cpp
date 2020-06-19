@@ -360,14 +360,15 @@ if( mWallet->isLocked() ) {          \
                             continue;
                         }
                         // sign it.
-                        if( !psbt_check_for_sig(&p, i, &hashType, &errMsg)
-                           || !psbt_get_sighash(&p, i, hashType, hash, &errMsg) ){
+                        if( !psbt_check_for_sig(&p, (uint32_t)i, &hashType, &errMsg)
+                           || !psbt_get_sighash(&p, (uint32_t)i, hashType, hash, &errMsg) ){
                             free(bip32_path);
                             replyError(KEYBOX_ERROR_CLIENT_ISSUE, "psbt can't be signed.");
                             goto _psbt_err_ret;
                         }
                         if( hdnode_sign_digest(&signNode, hash, sig, sig+64, nullptr)==0 ){
-                            psbt_add_partial_sig(&p, i, signNode.public_key, sig);
+                            sig[64] = (uint8_t)hashType;
+                            psbt_add_partial_sig(&p, (uint32_t)i, signNode.public_key, sig);
                             someSigned = true;
                         }
                     }
