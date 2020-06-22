@@ -13,6 +13,7 @@ public:
     void createWallet(const QString& mnemonic, const QString & password, const QString &name);
     void loadWallet(const QString &fileName);
     WalletInstance * getWalletInstance();
+    ~WalletManager();
 signals:
     void walletChanged();
 public slots:

@@ -24,7 +24,8 @@ WalletInstance::WalletInstance(QString const & mnemonic, QString const & passwor
 {
     // 生成 seed
     m_seed_plain.resize(512/8);
-    const char * m = mnemonic.toUtf8().constData();
+    QByteArray a = mnemonic.toUtf8();
+    const char * m = a.constData();
     const char * p = "";
     mnemonic_to_seed(m, p, (uint8_t*)m_seed_plain.data(), NULL);
 

@@ -42,6 +42,14 @@ WalletInstance *WalletManager::getWalletInstance()
     return mWallet;
 }
 
+WalletManager::~WalletManager()
+{
+    delete mWallet;
+    if( mServer ){
+        delete mServer;
+    }
+}
+
 void WalletManager::clientConnect()
 {
     mHasClient = true;
@@ -371,6 +379,7 @@ if( mWallet->isLocked() ) {          \
                             psbt_add_partial_sig(&p, (uint32_t)i, signNode.public_key, sig);
                             someSigned = true;
                         }
+                        free(bip32_path);
                     }
 
                 }
