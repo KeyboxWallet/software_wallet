@@ -63,7 +63,10 @@ void WalletManager::clientDisconnected()
 QString btc_value_pretty(uint64_t value)
 {
     QString ret;
-    if( value < 1000000 ){
+    if( value < 10000) {
+        ret = QString::fromUtf8("%1SAT").arg(value);
+    }
+    else if( value < 1000000 ){
         ret = QString::fromUtf8("%1mBTC").arg(value/100000.0);
     }
     else{
@@ -220,7 +223,6 @@ if( mWallet->isLocked() ) {          \
                 replyError(  KEYBOX_ERROR_INVALID_PARAMETER, "you must provide exact 32 byte hash");
                 return;
             }
-
             QByteArray inputHash((char*)signReq.hash.bytes, signReq.hash.size);
             QMessageBox msgBox;
             msgBox.setText("确认签名请求");
@@ -310,7 +312,7 @@ if( mWallet->isLocked() ) {          \
             cstring * outStr;
             BitcoinSignResult result;
             pb_ostream_t ostream ;
-
+            uint64_t miner_fee;
             if( !psbt_deserialize(&p, &b) ){
                replyError(  KEYBOX_ERROR_INVALID_PARAMETER, "you must provide valid psbt buffer.");
                goto _psbt_err_ret;
@@ -325,9 +327,14 @@ if( mWallet->isLocked() ) {          \
                     tx_out,
                     bitcoinSignReq.testnet ? & btc_chainparams_test : & btc_chainparams_main );
                     outinfo.append(address);
-                    outinfo.append(" ");
+                    outinfo.append(":");
                     outinfo.append(btc_value_pretty(tx_out->value));
                     outinfo.append("\n");   
+            }
+            if( psbt_get_miner_fee(&p, &miner_fee)){
+                outinfo.append("矿工费：");
+                outinfo.append(btc_value_pretty(miner_fee));
+                outinfo.append("\n");
             }
             msgBox.setText("Bitcoin 确认签名:");
             msgBox.setInformativeText(outinfo);
