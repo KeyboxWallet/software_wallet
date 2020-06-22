@@ -307,12 +307,14 @@ if( mWallet->isLocked() ) {          \
             QMessageBox msgBox;
             uint32_t hashType = SIGHASH_ALL;
             vector * ivec;
+            vector * ovec;
             char * errMsg;
             uint8_t sig[65];
             cstring * outStr;
             BitcoinSignResult result;
             pb_ostream_t ostream ;
             uint64_t miner_fee;
+            bool isChange;
             if( !psbt_deserialize(&p, &b) ){
                replyError(  KEYBOX_ERROR_INVALID_PARAMETER, "you must provide valid psbt buffer.");
                goto _psbt_err_ret;
@@ -321,7 +323,36 @@ if( mWallet->isLocked() ) {          \
             tx = psbt_get_unsigned_tx(&p);
             Q_ASSERT(tx);
             for(i=0; i<tx->vout->len; i++){
-                // todo: check change, and if it is, omit info
+                isChange = false;
+                ovec = (vector*)vector_idx(p.output_data, i);
+                for(j=0; j<ovec->len && !isChange; j++){
+                    psbt_map_elem * elem = (psbt_map_elem*)vector_idx(ovec, j);
+                    if( elem->type.output == PSBT_OUT_BIP32_DERIVATION ){
+                        if( (elem->value.len & 3) != 0 || elem->value.len < 8){
+                            replyError(KEYBOX_ERROR_CLIENT_ISSUE, "非法的bip32路径");
+                            goto _psbt_err_ret;
+                        }
+                        path_size = elem->value.len / 4;
+                        bip32_path = (uint32_t*)malloc( elem->value.len);
+                        memcpy(bip32_path, elem->value.p, elem->value.len);
+                        bip32_path[0] = be32toh(bip32_path[0]);
+                        for( k=1; k<path_size; k++){
+                            //memcpy(bip32_path[k
+                            bip32_path[i] = le32toh(bip32_path[i]);
+                        }
+                        if( !mWallet->getBip32NodeFromUint32Array(&signNode, bip32_path, path_size )){
+
+                        }
+                        else{
+                            if( memcmp(signNode.public_key, (uint8_t*)elem->key.p + 1, 33) == 0 ){
+                                isChange = true;
+                            }
+                        }
+                        free(bip32_path);
+                    }
+                }
+                if( isChange )
+                    continue;
                 btc_tx_out * tx_out = (btc_tx_out*)vector_idx(tx->vout, i);
                 btc_tx_get_output_address(address, 
                     tx_out,
