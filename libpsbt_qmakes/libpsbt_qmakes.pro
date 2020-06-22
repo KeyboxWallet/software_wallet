@@ -9,6 +9,5 @@ include(../common/common.pri)
 PSBT_SRCS = $$files($$PSBT_PATH/src/*.c)
 
 
-QMAKE_CFLAGS -= -Werror
 SOURCES += $$PSBT_SRCS
 
