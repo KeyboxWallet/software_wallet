@@ -53,6 +53,11 @@ LIBS += ../crypto_lib_qmakes/ed25519/libed25519.a
 SOURCES += safe_rand.c \
            crypto_utils.c
 
+SOURCES += ../base64/base64.c
+HEADERS += ../base64/base64.h
+INCLUDEPATH += ../base64
+QMAKE_CFLAGS += -Wno-error=sign-compare
+
 HEADERS += crypto_utils.h
 
 

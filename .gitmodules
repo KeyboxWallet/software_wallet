@@ -10,3 +10,6 @@
 [submodule "libpsbt_for_signer"]
 	path = libpsbt_for_signer
 	url = https://github.com/KeyboxWallet/libpsbt_for_signer.git
+[submodule "base64"]
+	path = base64
+	url = https://github.com/joedf/base64.c.git

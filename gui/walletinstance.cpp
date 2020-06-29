@@ -11,7 +11,7 @@ extern "C" {
 
 #include "crypto_utils.h"
 
-void getSecretAndIv(QString const &password, uint8_t secret[64]){
+static void getSecretAndIv(QString const &password, uint8_t secret[64]){
     const char *pass = password.toUtf8().constData();
     PBKDF2_HMAC_SHA512_CTX pctx;
     pbkdf2_hmac_sha512_Init(&pctx, (const uint8_t*)pass, strlen(pass), (const uint8_t *)"KeyBox", 6, 0);
