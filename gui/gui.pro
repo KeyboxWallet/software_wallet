@@ -53,6 +53,10 @@ LIBS += ../crypto_lib_qmakes/ed25519/libed25519.a
 SOURCES += safe_rand.c \
            crypto_utils.c
 
+SOURCES += ../ethereum_tx/rlp.c
+HEADERS += ../ethereum_tx/rlp.h
+INCLUDEPATH += ../ethereum_tx
+
 SOURCES += ../base64/base64.c
 HEADERS += ../base64/base64.h
 INCLUDEPATH += ../base64

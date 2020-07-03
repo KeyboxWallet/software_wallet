@@ -17,7 +17,7 @@ uint16_t getPathDeriveCount(const char *path);
 void bip32getIdentifier(HDNode *node, uint8_t id[32]);
 
 int encrypt_mnemonic(const char * mnemonic, const char * password, char  out[44]);
-int decrypt_mnemnic(const char * b64_encrypted, const char * password, const char * language, uint8_t word_len, char * mnemonic);
+int decrypt_mnemonic(const char * b64_encrypted, const char * password, const char * language, uint8_t word_len, char * mnemonic);
 
 #ifdef __cplusplus
 }

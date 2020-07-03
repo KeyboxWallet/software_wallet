@@ -265,3 +265,12 @@ int rlp_encode(const struct ethereum_tx * in_tx, uint8_t * buf, uint32_t in_size
     *out_size = ba.p - buf;
     return 1;
 }
+
+void uint32_rlp_encode(uint32_t v, uint8_t buffer[4], uint8_t *outSize)
+{
+    struct byte_array ba;
+    ba.p = buffer;
+    ba.size = 4;
+    (void)rlp_encode_uint(&ba, v);
+    *outSize = 4-ba.size;
+}

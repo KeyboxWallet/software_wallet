@@ -6,6 +6,7 @@ extern "C" {
     #include "pb_encode.h"
     #include "pb_decode.h"
     #include "messages.pb.h"
+    #include "rlp.h"
 }
 #include "btc/tx.h"
 #include "btc/psbt.h"
@@ -92,6 +93,7 @@ if( mWallet->isLocked() ) {          \
     bool decode_status;
     EccSignRequest signReq = EccSignRequest_init_default;
     BitcoinSignRequest bitcoinSignReq = BitcoinSignRequest_init_default;
+    EthereumSignRequest ethSignReq = EthereumSignRequest_init_default;
     EccGetPublicKeyRequest getPubKeyReq = EccGetPublicKeyRequest_init_default;
     EccGetExtendedPublicKeyRequest getXpubReq = EccGetExtendedPublicKeyRequest_init_default;
     EccMultiplyRequest multiplyReq = EccMultiplyRequest_init_default;
@@ -451,6 +453,111 @@ if( mWallet->isLocked() ) {          \
             }
 _psbt_err_ret:
             psbt_reset(&p); // free psbt memory
+        }
+        else{
+           //  qDebug("%s", bitcoinSignReq.hdPath );
+            mServer->abortConnection();
+        }
+        break;
+    case MsgTypeEthereumSignRequest:
+        CHECK_MWALLET
+        decode_status = pb_decode(&stream, EthereumSignRequest_fields, &ethSignReq);
+        if( decode_status ){
+            // check path first
+            struct ethereum_tx tx;
+            if( !rlp_parse(ethSignReq.unsignedTx.bytes, ethSignReq.unsignedTx.size, &tx)){
+                replyError(KEYBOX_ERROR_CLIENT_ISSUE, "invalid unsignedTx parameter");
+                break;
+            }
+            if( ethereum_tx_has_signature(&tx)){
+                replyError(KEYBOX_ERROR_CLIENT_ISSUE, "already signed tx");
+                break;
+            }
+            QString msg = QString::fromUtf8("以太坊交易：\n");
+            char temp[100];
+            if(! ethereum_tx_get_toaddress(&tx, temp)){
+                replyError(KEYBOX_ERROR_CLIENT_ISSUE, "invalid to address");
+                break;
+            }
+            msg.append("to:").append(temp).append("\n");
+            if( !ethereum_tx_get_value(&tx, temp)){
+                replyError(KEYBOX_ERROR_CLIENT_ISSUE, "invalid value");
+                break;
+            }
+            msg.append("value:").append(temp).append("\n");
+            QMessageBox msgBox;
+            msgBox.setText("确认ETH签名请求");
+            msgBox.setInformativeText(msg);
+            msgBox.setStandardButtons(QMessageBox::Ok  | QMessageBox::Cancel);
+            msgBox.setDefaultButton(QMessageBox::Ok);
+            int ret = msgBox.exec();
+            if(ret == QMessageBox::Cancel ){
+                replyError(KEYBOX_ERROR_USER_CANCELLED, "用户拒绝签名");
+                break;
+            }
+
+            uint8_t hash[32];
+            keccak_256(ethSignReq.unsignedTx.bytes, ethSignReq.unsignedTx.size,hash);
+
+            // temp
+            // replyError(KEYBOX_ERROR_SERVER_ISSUE, "not yet implemented");
+            QByteArray pubkey;
+            int32_t errcode;
+            QString errMessage;
+            EccSignature sig;
+            EccSignOptions option = EccSignOptions_init_default;
+            option.rfc6979 = true;
+            option.graphene_canonize = false;
+            mWallet ->eccSign(QString::fromUtf8(ethSignReq.hdPath), QByteArray((char*)hash, 32), option, errcode, errMessage, sig, pubkey);
+            if( errcode != 0 ){
+                replyError(errcode, errMessage);
+                break;
+            }
+            struct byte_array &r = tx.content[7];
+            struct byte_array &s = tx.content[8];
+            struct byte_array &v = tx.content[6];
+            if( tx.array_len == 6){ // before EIP155
+                uint8_t vbyte;
+                vbyte = sig.recovery_param + 27;
+                v.p = &vbyte;
+                v.size = 1;
+            }
+            else {
+                uint32_t chainId;
+                uint8_t enc[4];
+                uint8_t localS;
+                if( !ethereum_tx_get_chainid(&tx, &chainId)){
+                    replyError(KEYBOX_ERROR_CLIENT_ISSUE, "cant decode chainId");
+                }
+                uint32_rlp_encode(chainId*2 + 35 + sig.recovery_param, enc, &localS);
+                v.p = enc;
+                v.size = localS;
+            }
+
+            r.p = ( uint8_t*)sig.R.constData();
+            r.size = sig.R.length();
+            s.p = (uint8_t*)sig.S.constData();
+            s.size = sig.S.length();
+            tx.array_len = 9;
+            EthereumSignResult result;
+            uint32_t outSize;
+            if( !rlp_encode(&tx, result.signedTx.bytes, 8192, &outSize)){
+                replyError(KEYBOX_ERROR_SERVER_ISSUE, "unexpected encode error.");
+                break;
+            }
+            result.signedTx.size = outSize;
+            pb_ostream_t ostream = pb_ostream_from_buffer((uint8_t*)rb.data(), rb.size());
+            encode_status = pb_encode(&ostream, EthereumSignResult_fields, &result);
+            size = ostream.bytes_written;
+
+            if( encode_status ){
+                rb.resize(size);
+                mServer -> sendMessage(MsgTypeEthereumSignResult, rb);
+            }
+            else {
+                qFatal("can't encode message, %s", PB_GET_ERROR(&ostream));
+            }
+
         }
         else{
            //  qDebug("%s", bitcoinSignReq.hdPath );

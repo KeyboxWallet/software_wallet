@@ -224,7 +224,7 @@ static struct name_lang_map_item lang_maps[] = {
   {"it", lang_it}
 };
 
-int decrypt_mnemnic(const char * b64_encrypted, const char * password, const char * language, uint8_t word_len, char * mnemonic)
+int decrypt_mnemonic(const char * b64_encrypted, const char * password, const char * language, uint8_t word_len, char * mnemonic)
 {
     uint8_t bytelen ;
     if( word_len == 12 || word_len == 15 || word_len == 18 || word_len == 21 || word_len == 24 ){
