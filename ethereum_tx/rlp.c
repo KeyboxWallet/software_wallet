@@ -90,7 +90,7 @@ int rlp_parse(const uint8_t * buf, uint32_t buf_size, struct ethereum_tx * out_t
     }
     struct byte_array ba;
     struct rlp_parsed_item item;
-    ba.p = buf;
+    ba.p = (uint8_t*)buf;
     ba.size = buf_size;
     if( rlp_parse_item(&ba, &item) == 0 ){
         return 0;

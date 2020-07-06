@@ -93,14 +93,30 @@ static inline int ethereum_tx_get_nonce(const struct ethereum_tx * tx, uint32_t 
     }
 }
 
-static inline int ethereum_tx_get_gasPrice(const struct ethereum_tx * tx, uint64_t * price)
+static inline int ethereum_tx_get_eth_value(const struct ethereum_tx *tx, char value[90], uint8_t index)
 {
-    if( tx->array_len >= 2){
-        return ba_parse_uint64(&tx->content[1], price);
+    bignum256 v;
+    bignum256 t1, t2;
+    bn_read_uint32(10000000U, &t1);
+    bn_read_uint64(1000000000000000UL, &t2);
+    if( tx->array_len > index){
+        if( ba_parse_bignum(&tx->content[index], &v) == 0 ){
+            return 0;
+        }
+        if( bn_is_less(&v, &t1 )){
+            return bn_format(&v, "", " WEI", 0, 0, false, value, 90);
+        }
+        if( bn_is_less(&v, &t2)) {
+            return bn_format(&v, "", " GWEI", 9, 0, false, value, 90 );
+        }
+        return bn_format(&v,"", " ETH", 18, 0, false, value, 90 );
     }
-    else {
-        return 0;
-    }
+    return 0;
+}
+
+static inline int ethereum_tx_get_gasPrice(const struct ethereum_tx * tx, char value[90])
+{
+    return ethereum_tx_get_eth_value(tx, value, 1);
 }
 
 static inline int ethereum_tx_get_gasLimit(const struct ethereum_tx * tx, uint64_t * limit)
@@ -140,25 +156,11 @@ static inline int ethereum_tx_get_toaddress(const struct ethereum_tx *tx, char h
 }
 
 
+
+
 static inline int ethereum_tx_get_value(const struct ethereum_tx *tx, char value[90])
 {
-    bignum256 v;
-    bignum256 t1, t2;
-    bn_read_uint32(10000000U, &t1);
-    bn_read_uint64(1000000000000000UL, &t2);
-    if( tx->array_len >= 5){
-        if( ba_parse_bignum(&tx->content[4], &v) == 0 ){
-            return 0;
-        }
-        if( bn_is_less(&v, &t1 )){
-            return bn_format(&v, "", " WEI", 0, 0, false, value, 90);
-        }
-        if( bn_is_less(&v, &t2)) {
-            return bn_format(&v, "", " GWEI", 9, 0, false, value, 90 );
-        }
-        return bn_format(&v,"", " ETH", 18, 0, false, value, 90 );
-    }
-    return 0;
+    return ethereum_tx_get_eth_value(tx, value, 4);
 }
 
 static inline bool ethereum_tx_has_signature(const struct ethereum_tx *tx)

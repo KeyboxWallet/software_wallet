@@ -485,6 +485,26 @@ _psbt_err_ret:
                 break;
             }
             msg.append("value:").append(temp).append("\n");
+            uint32_t nonce;
+            if( !ethereum_tx_get_nonce(&tx, &nonce)){
+                replyError(KEYBOX_ERROR_CLIENT_ISSUE, "invalid nonce");
+                break;
+            }
+            msg.append(QString("nonce: %1 \n").arg(nonce));
+
+            if( !ethereum_tx_get_gasPrice(&tx, temp)){
+                replyError(KEYBOX_ERROR_CLIENT_ISSUE, "invalid gasPrice");
+                break;
+            }
+            msg.append("gas price:").append(temp).append("\n");
+            uint64_t limit;
+            if( !ethereum_tx_get_gasLimit(&tx, &limit)){
+                replyError(KEYBOX_ERROR_CLIENT_ISSUE, "invalid gasLimt");
+                break;
+            }
+            msg.append(QString("gas limit: %1 \n").arg(limit));
+
+
             QMessageBox msgBox;
             msgBox.setText("确认ETH签名请求");
             msgBox.setInformativeText(msg);
