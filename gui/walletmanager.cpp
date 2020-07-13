@@ -61,17 +61,57 @@ void WalletManager::clientDisconnected()
     mHasClient = false;
 }
 
-QString btc_value_pretty(uint64_t value)
+
+
+
+QString btc_value_pretty(uint64_t value, BtcLikeCoins coin, bool testNet)
 {
     QString ret;
+    const char * coinName = "BTC";
+    switch( coin ){
+        case BtcLikeCoins_BITCOIN:
+            if( !testNet){
+                coinName = "BTC";
+            }
+            else{
+                coinName = "tBTC";
+            }
+            break;
+        case BtcLikeCoins_LITECOIN:
+            if( !testNet){
+                coinName = "LTC";
+            }
+            else{
+                coinName = "tLTC";
+            }
+            break;
+        case BtcLikeCoins_DASH:
+            if( !testNet){
+                coinName = "DASH";
+            }
+            else{
+                coinName = "tDASH";
+            }
+            break;
+        case BtcLikeCoins_BITCOINCASH:
+            if (!testNet){
+                coinName = "BCH";
+            }
+            else {
+                coinName = "tBCH";
+            }
+            break;
+        default:
+            break;
+    }
     if( value < 10000) {
         ret = QString::fromUtf8("%1SAT").arg(value);
     }
     else if( value < 1000000 ){
-        ret = QString::fromUtf8("%1mBTC").arg(value/100000.0);
+        ret = QString::fromUtf8("%1m%2").arg(value/100000.0).arg(coinName);
     }
     else{
-        ret = QString::fromUtf8("%1BTC").arg(value / 100000000.0);
+        ret = QString::fromUtf8("%1%2").arg(value / 100000000.0).arg(coinName);
     }
     return ret;
 }
@@ -293,6 +333,38 @@ if( mWallet->isLocked() ) {          \
             struct const_buffer b;
             b.p = bitcoinSignReq.psbt.bytes ;
             b.len = bitcoinSignReq.psbt.size;
+            BtcLikeCoins coin = bitcoinSignReq.coin;
+            const btc_chainparams *params;
+            switch(coin){
+            case BtcLikeCoins_BITCOIN:
+            case BtcLikeCoins_BITCOINCASH:
+                if( !bitcoinSignReq.testnet){
+                    params = &btc_chainparams_main;
+                }
+                else{
+                    params = &btc_chainparams_test;
+                }
+                break;
+            case BtcLikeCoins_LITECOIN:
+                if( !bitcoinSignReq.testnet){
+                    params = &ltc_chainparams_main;
+                }
+                else{
+                    params = &ltc_chainparams_test;
+                }
+                break;
+            case BtcLikeCoins_DASH:
+                if( !bitcoinSignReq.testnet){
+                    params = &dash_chainparams_main;
+                }
+                else{
+                    params = &dash_chainparams_test;
+                }
+                break;
+            default:
+                params = &btc_chainparams_main;
+                break;
+            }
             psbt_init(&p);
             btc_tx *tx = nullptr;
             QString outinfo;
@@ -361,15 +433,15 @@ if( mWallet->isLocked() ) {          \
                     bitcoinSignReq.testnet ? & btc_chainparams_test : & btc_chainparams_main );
                     outinfo.append(address);
                     outinfo.append(":");
-                    outinfo.append(btc_value_pretty(tx_out->value));
+                    outinfo.append(btc_value_pretty(tx_out->value,coin,bitcoinSignReq.testnet));
                     outinfo.append("\n");   
             }
             if( psbt_get_miner_fee(&p, &miner_fee)){
                 outinfo.append("矿工费：");
-                outinfo.append(btc_value_pretty(miner_fee));
+                outinfo.append(btc_value_pretty(miner_fee,coin,bitcoinSignReq.testnet));
                 outinfo.append("\n");
             }
-            msgBox.setText("Bitcoin 确认签名:");
+            msgBox.setText(QString::fromUtf8("%1 确认签名:").arg(params->chainname));
             msgBox.setInformativeText(outinfo);
             msgBox.setStandardButtons(QMessageBox::Ok  | QMessageBox::Cancel);
             msgBox.setDefaultButton(QMessageBox::Ok);
