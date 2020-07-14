@@ -7,6 +7,7 @@ extern "C" {
     #include "pb_decode.h"
     #include "messages.pb.h"
     #include "rlp.h"
+    #include "cash_addr.h"
 }
 #include "btc/tx.h"
 #include "btc/psbt.h"
@@ -430,11 +431,15 @@ if( mWallet->isLocked() ) {          \
                 btc_tx_out * tx_out = (btc_tx_out*)vector_idx(tx->vout, i);
                 btc_tx_get_output_address(address, 
                     tx_out,
-                    bitcoinSignReq.testnet ? & btc_chainparams_test : & btc_chainparams_main );
-                    outinfo.append(address);
-                    outinfo.append(":");
-                    outinfo.append(btc_value_pretty(tx_out->value,coin,bitcoinSignReq.testnet));
-                    outinfo.append("\n");   
+                    params);
+                if( coin == BtcLikeCoins_BITCOINCASH ){
+                    const char * hrp = bitcoinSignReq.testnet ? "bchtest": "bitcoincash";
+                    bch_tx_get_output_address(address, tx_out, hrp);
+                }
+                outinfo.append(address);
+                outinfo.append(":");
+                outinfo.append(btc_value_pretty(tx_out->value,coin,bitcoinSignReq.testnet));
+                outinfo.append("\n");
             }
             if( psbt_get_miner_fee(&p, &miner_fee)){
                 outinfo.append("矿工费：");
